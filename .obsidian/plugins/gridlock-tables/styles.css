@@ -1,0 +1,335 @@
+/*
+ * Gridlock Tables.
+ * Every rule is scoped under body.gridlock-tables-enabled so the settings
+ * toggle restores native table rendering without a reload.
+ *
+ * Every rule also reaches a table only through the note view that renders it,
+ * and only when that view lacks .gridlock-tables-off, so a note can opt out
+ * with `cssclasses: [gridlock-tables-off]` in its frontmatter. Obsidian puts a
+ * note's cssclasses on its .markdown-preview-view / .markdown-source-view,
+ * including the inner view of an embedded note. The view-to-table path is
+ * spelled out with child combinators: with a plain descendant combinator an
+ * opted-out note embedded in a normal one would still match through the outer
+ * view.
+ *
+ * Table containers, Obsidian 1.14.4:
+ *   Reading view  .markdown-preview-view > .markdown-preview-sizer > .el-table
+ *   Live Preview  .markdown-source-view > .cm-editor > .cm-scroller > .cm-sizer
+ *                   > .cm-contentContainer > .cm-content > .cm-table-widget
+ */
+
+/* @settings
+
+name: Gridlock Tables
+id: gridlock-tables
+settings:
+    -
+        id: gridlock-table-font
+        title: Table font
+        description: Font for table text, as a CSS font-family list. Leave empty to use the note's font.
+        type: variable-text
+        default: ''
+        quotes: false
+    -
+        id: gridlock-header-font
+        title: Header font
+        description: Font for header cells. Leave empty to use the table font.
+        type: variable-text
+        default: ''
+        quotes: false
+    -
+        id: gridlock-text-size
+        title: Text size
+        type: variable-number-slider
+        default: 16
+        min: 10
+        max: 24
+        step: 1
+        format: px
+    -
+        id: gridlock-header-size
+        title: Header text size
+        type: variable-number-slider
+        default: 16
+        min: 10
+        max: 24
+        step: 1
+        format: px
+    -
+        id: gridlock-header-weight
+        title: Header weight
+        type: variable-select
+        default: '600'
+        options:
+            - '400'
+            - '500'
+            - '600'
+            - '700'
+    -
+        id: gridlock-line-height
+        title: Line height
+        type: variable-number-slider
+        default: 1.3
+        min: 1
+        max: 2
+        step: 0.05
+    -
+        id: gridlock-cell-padding-y
+        title: Cell padding, top and bottom
+        type: variable-number-slider
+        default: 0.25
+        min: 0
+        max: 1
+        step: 0.05
+        format: em
+    -
+        id: gridlock-cell-padding-x
+        title: Cell padding, left and right
+        type: variable-number-slider
+        default: 0.5
+        min: 0
+        max: 1.5
+        step: 0.05
+        format: em
+
+*/
+
+/*
+ * Clamped column widths, set on the table containers so an opted-out note's
+ * tables inherit Obsidian's own values. The plugin sets --gridlock-col-min/max
+ * from settings; the fallbacks match the defaults in src/utils/columnLimits.ts.
+ */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget {
+	--table-column-min-width: var(--gridlock-col-min, 6ch);
+	--table-column-max-width: var(--gridlock-col-max, 60ch);
+}
+
+/*
+ * Text style, from the Style Settings block above. Style Settings sets a
+ * --gridlock-* variable on body only once the user changes that option, and
+ * each option's rules sit in a style query on that variable, so until then
+ * they do not exist: Obsidian's rules, themes and snippets apply unchanged.
+ * (Plain fallbacks would not do: these selectors outrank .markdown-rendered
+ * td, so a snippet styling cells directly would lose even with nothing set.)
+ * A cleared text field is stored as "", which counts as not set.
+ *
+ * The table itself carries the body font and size: <col> widths are in ch,
+ * which resolves against the table's font, so pinned columns scale with the
+ * text. Both views put the table under .markdown-rendered, where Obsidian
+ * styles td and th; Live Preview pads .table-cell-wrapper instead of the cell.
+ */
+@container style(--gridlock-table-font) and (not style(--gridlock-table-font: "")) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table {
+		font-family: var(--gridlock-table-font);
+	}
+}
+
+@container style(--gridlock-text-size) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table,
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > tbody > tr > td,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > tbody > tr > td,
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th {
+		font-size: var(--gridlock-text-size);
+	}
+}
+
+/* After Text size, so a header size wins over it. */
+@container style(--gridlock-header-size) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th {
+		font-size: var(--gridlock-header-size);
+	}
+}
+
+@container style(--gridlock-header-font) and (not style(--gridlock-header-font: "")) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th {
+		font-family: var(--gridlock-header-font);
+	}
+}
+
+@container style(--gridlock-header-weight) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th {
+		font-weight: var(--gridlock-header-weight);
+	}
+}
+
+/* Obsidian reads --table-line-height for the table and for the editor in a
+ * Live Preview cell being edited; headers get their own line height. */
+@container style(--gridlock-line-height) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget {
+		--table-line-height: var(--gridlock-line-height);
+	}
+
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th,
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th {
+		line-height: var(--gridlock-line-height);
+	}
+}
+
+@container style(--gridlock-cell-padding-y) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > * > tr > :is(th, td),
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > * > tr > :is(th, td) > .table-cell-wrapper {
+		padding-top: var(--gridlock-cell-padding-y);
+		padding-bottom: var(--gridlock-cell-padding-y);
+	}
+}
+
+@container style(--gridlock-cell-padding-x) {
+	body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > * > tr > :is(th, td),
+	body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > * > tr > :is(th, td) > .table-cell-wrapper {
+		padding-left: var(--gridlock-cell-padding-x);
+		padding-right: var(--gridlock-cell-padding-x);
+	}
+}
+
+/*
+ * Content-driven layout. Kept at the lowest specificity :where() allows so the
+ * Phase 2 pinned state (table-layout: fixed) overrides it without !important.
+ */
+body.gridlock-tables-enabled :where(.markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table) > :where(table),
+body.gridlock-tables-enabled :where(.markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget) > :where(.table-wrapper) > :where(table) {
+	table-layout: auto;
+}
+
+/*
+ * Live Preview parity: Obsidian applies --table-column-max-width to Reading
+ * view cells but only --table-column-min-width to the Live Preview table
+ * widget's cells.
+ */
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget :is(th, td) {
+	max-width: var(--table-column-max-width);
+}
+
+/*
+ * Overflow-only breakout. Obsidian already wraps every table in its own
+ * horizontal scroll container but sizes it to the readable line. Here the
+ * container shrinks to the table and may grow rightward up to the pane's inner
+ * edge; past that, the table scrolls inside its own container.
+ *
+ * The pane's scroll element is the query container, so 100cqw is the width
+ * the readable column (min(--file-line-width, 100cqw), Obsidian's sizer) is
+ * centred in. The free space right of the column is half the difference;
+ * adding 100% (the container's own containing block, which ends at the
+ * column's right edge) gives the room up to the pane's inner edge. That holds
+ * when the LP line-number gutter narrows the content inside the column.
+ * Without readable line length there is no free space, so nothing changes.
+ * Only the outer editor scroller is a container: the LP widget's cells are
+ * CodeMirror editors with scrollers of their own.
+ */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off),
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller {
+	container-type: inline-size;
+}
+
+body.gridlock-tables-enabled .markdown-preview-view.is-readable-line-width:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table {
+	width: max-content;
+	max-width: calc((100cqw - min(var(--file-line-width), 100cqw)) / 2 + 100%);
+}
+
+/* The LP widget sits var(--size-4-4) left of the text column (Obsidian's
+ * negative margin for its drag handles), so it gets that much more room. */
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6.is-readable-line-width:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget {
+	width: max-content;
+	max-width: calc((100cqw - min(var(--file-line-width), 100cqw)) / 2 + 100% + var(--size-4-4));
+}
+
+/*
+ * Pinned widths (resize handles, src/resize/). A pinned table switches to the
+ * fixed layout so dragged widths hold. Chrome ignores table-layout: fixed on a
+ * table whose width is auto, so the table takes width: max-content: pinned
+ * columns get exactly their <col> width and unpinned columns keep their
+ * clamped max-content width. A table wider than the pane scrolls inside its
+ * own container as before. Each <col> carries its width in ch as
+ * --gridlock-col-width; unpinned columns have none.
+ */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-pinned,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-pinned {
+	table-layout: fixed;
+	width: max-content;
+}
+
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-pinned > colgroup > col,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-pinned > colgroup > col {
+	width: var(--gridlock-col-width);
+}
+
+/* A pinned column narrower than a long word wraps the word instead of spilling. */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-pinned :is(th, td),
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-pinned :is(th, td) {
+	overflow-wrap: anywhere;
+}
+
+/* Auto-fit measures a column with the table laid out at max- and min-content. */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-measure-max,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-measure-max {
+	width: max-content;
+}
+
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-measure-min,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-measure-min {
+	width: min-content;
+}
+
+/*
+ * Resize handles: a strip along the right edge of each header cell. It sits
+ * inside the cell because Reading view clips header cells (overflow: hidden),
+ * and below Obsidian's own .table-col-drag-handle, which sits above the cell.
+ * touch-action: none keeps a touch drag on the handle from scrolling the pane.
+ */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th {
+	position: relative;
+}
+
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th > .gridlock-col-resize,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th > .gridlock-col-resize {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	width: var(--size-4-2);
+	z-index: 1;
+	cursor: col-resize;
+	touch-action: none;
+	user-select: none;
+	pointer-events: auto;
+}
+
+body.gridlock-tables-enabled.is-mobile .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th > .gridlock-col-resize,
+body.gridlock-tables-enabled.is-mobile .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th > .gridlock-col-resize {
+	width: var(--size-4-4);
+}
+
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table > thead > tr > th > .gridlock-col-resize:is(:hover, .is-active),
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table > thead > tr > th > .gridlock-col-resize:is(:hover, .is-active) {
+	background-color: var(--interactive-accent);
+	opacity: 0.5;
+}
+
+/* While a column is dragged, the table's scroll container takes no pointer input. */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table.gridlock-resizing,
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget.gridlock-resizing {
+	pointer-events: none;
+}
+
+/* A mouse over a column edge in any row (see onPointerMove in src/resize/controller.ts). */
+body.gridlock-tables-enabled .markdown-preview-view:not(.gridlock-tables-off) > .markdown-preview-sizer > .el-table > table.gridlock-edge-hover :is(th, td, th *, td *),
+body.gridlock-tables-enabled .markdown-source-view.mod-cm6:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-table-widget > .table-wrapper > table.gridlock-edge-hover :is(th, td, th *, td *) {
+	cursor: col-resize;
+}
+
+/*
+ * Live Preview hides each table's gridlock-cols comment and the blank line
+ * after it while no selection touches them (src/resize/hideComments.ts marks
+ * the lines). Source mode shows them, and so does Live Preview with the
+ * "Hide width comments in Live Preview" setting off.
+ */
+body.gridlock-tables-enabled.gridlock-hide-width-comments .markdown-source-view.mod-cm6.is-live-preview:not(.gridlock-tables-off) > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-line.gridlock-cols-hidden {
+	display: none;
+}

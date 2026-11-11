@@ -1,2 +1,12 @@
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/
+.DS_Store
+Thumbs.db
+
+# separate cloned repo, not part of this vault backup
+Obsidian/
+
+# independent nested repository (7XDDD/CEOagent)
+CEOagent/
